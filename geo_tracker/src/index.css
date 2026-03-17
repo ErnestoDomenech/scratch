@@ -1,9 +1,9 @@
 :root {
   --bg-dark: #0f172a;
   --bg-darker: #020617;
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-glow: rgba(59, 130, 246, 0.5);
+  --primary: #10b981; /* Corporate Green */
+  --primary-hover: #059669; /* Darker green for hover */
+  --primary-glow: rgba(16, 185, 129, 0.5); /* Green glow */
   --success: #10b981;
   --success-glow: rgba(16, 185, 129, 0.5);
   --danger: #ef4444;
@@ -28,8 +28,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-dark);
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.1), transparent 25%);
+    radial-gradient(circle at 15% 50%, rgba(16, 185, 129, 0.15), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(5, 150, 105, 0.1), transparent 25%);
   color: var(--text-main);
   min-height: 100vh;
   display: flex;
@@ -91,7 +91,7 @@ body {
 
 .input-field:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 .btn {
