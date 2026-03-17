@@ -6,7 +6,12 @@ export default function Tracker({ userPhone, onLogout }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [locationError, setLocationError] = useState('');
   const [lastLocation, setLastLocation] = useState(null);
-  const [taskLocations, setTaskLocations] = useState([]); // Can be used to store track history if needed later
+  const [taskDetails, setTaskDetails] = useState({
+    startTime: null,
+    endTime: null,
+    startLocation: null,
+    endLocation: null,
+  });
 
   const intervalRef = useRef(null);
 
@@ -20,6 +25,11 @@ export default function Tracker({ userPhone, onLogout }) {
       
       setIsTracking(true);
       setElapsedSeconds(Math.floor((now - startTime) / 1000));
+      setTaskDetails(prev => ({
+        ...prev,
+        startTime: new Date(taskData.startTime),
+        startLocation: { lat: taskData.startLat, lng: taskData.startLng }
+      }));
       
       intervalRef.current = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
@@ -39,6 +49,13 @@ export default function Tracker({ userPhone, onLogout }) {
     return [hours, minutes, seconds]
       .map(v => v < 10 ? "0" + v : v)
       .join(":");
+  };
+
+  const formatHourMinute = (dateObj) => {
+    if (!dateObj) return '--:--';
+    const h = dateObj.getHours().toString().padStart(2, '0');
+    const m = dateObj.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
   };
 
   const getCurrentLocation = () => {
@@ -63,19 +80,29 @@ export default function Tracker({ userPhone, onLogout }) {
     setLocationError('');
     try {
       const coords = await getCurrentLocation();
-      const startTime = new Date().toISOString();
+      const startDate = new Date();
       
-      setLastLocation({ lat: coords.latitude, lng: coords.longitude });
+      const startLoc = { lat: coords.latitude, lng: coords.longitude };
+      
+      setTaskDetails({
+        startTime: startDate,
+        endTime: null, // Reset previous end time
+        startLocation: startLoc,
+        endLocation: null, // Reset previous end location
+      });
       
       // Save state to survive reloads
       localStorage.setItem('geo_tracker_active_task', JSON.stringify({
-        startTime,
+        startTime: startDate.toISOString(),
         startLat: coords.latitude,
         startLng: coords.longitude
       }));
 
       setIsTracking(true);
       setElapsedSeconds(0);
+      
+      // Clear interval just in case before starting a new one
+      if (intervalRef.current) clearInterval(intervalRef.current);
       
       intervalRef.current = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
@@ -90,27 +117,39 @@ export default function Tracker({ userPhone, onLogout }) {
     setLocationError('');
     try {
       const coords = await getCurrentLocation();
+      const endDate = new Date();
+      const endLoc = { lat: coords.latitude, lng: coords.longitude };
       
-      // Stop timer
-      clearInterval(intervalRef.current);
+      // Stop timer securely
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
       setIsTracking(false);
       
-      setLastLocation({ lat: coords.latitude, lng: coords.longitude });
+      setTaskDetails(prev => ({
+        ...prev,
+        endTime: endDate,
+        endLocation: endLoc
+      }));
       
-      // Here you would typically send data to a backend
-      console.log('Task Finished', {
+      const finalPayload = {
         userPhone,
         totalTimeSeconds: elapsedSeconds,
-        endCoords: { lat: coords.latitude, lng: coords.longitude }
-      });
+        startTime: taskDetails.startTime ? taskDetails.startTime.toISOString() : null,
+        startLocation: taskDetails.startLocation,
+        endTime: endDate.toISOString(),
+        endLocation: endLoc
+      };
+      
+      // Here you would typically send data to a backend
+      console.log('Task Finished! Payload para la BBDD:', finalPayload);
 
       // Clear local state
       localStorage.removeItem('geo_tracker_active_task');
-      // Keep final time visible until they start again, or reset as desired.
       
     } catch (err) {
       setLocationError(err.message + ' (Ignorando para finalizar tarea)');
-      clearInterval(intervalRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
       setIsTracking(false);
       localStorage.removeItem('geo_tracker_active_task');
     }
@@ -156,16 +195,39 @@ export default function Tracker({ userPhone, onLogout }) {
         </div>
       )}
 
-      {lastLocation && !isTracking && (
-        <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', color: 'var(--text-muted)' }}>
-            <MapPin size={14} /> <span>Última ubicación registrada:</span>
+      <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+        <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1rem' }}>Detalles de la Tarea</h3>
+        
+        {/* Start Info */}
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', color: 'var(--success)' }}>
+            <Play size={14} /> <span style={{ fontWeight: '600' }}>Inicio: {formatHourMinute(taskDetails.startTime)}</span>
           </div>
-          <div style={{ fontFamily: 'monospace' }}>
-            {lastLocation.lat.toFixed(6)}, {lastLocation.lng.toFixed(6)}
-          </div>
+          {taskDetails.startLocation ? (
+            <div style={{ fontFamily: 'monospace', color: 'var(--text-muted)', marginLeft: '1.5rem' }}>
+              Lat: {taskDetails.startLocation.lat.toFixed(5)}<br/>
+              Lng: {taskDetails.startLocation.lng.toFixed(5)}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', marginLeft: '1.5rem' }}>Esperando inicio...</div>
+          )}
         </div>
-      )}
+
+        {/* End Info */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', color: 'var(--danger)' }}>
+            <Square size={14} /> <span style={{ fontWeight: '600' }}>Fin: {formatHourMinute(taskDetails.endTime)}</span>
+          </div>
+          {taskDetails.endLocation ? (
+            <div style={{ fontFamily: 'monospace', color: 'var(--text-muted)', marginLeft: '1.5rem' }}>
+              Lat: {taskDetails.endLocation.lat.toFixed(5)}<br/>
+              Lng: {taskDetails.endLocation.lng.toFixed(5)}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', marginLeft: '1.5rem' }}>En curso...</div>
+          )}
+        </div>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {!isTracking ? (
