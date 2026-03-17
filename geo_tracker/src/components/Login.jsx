@@ -33,8 +33,8 @@ export default function Login({ onLogin }) {
         </div>
       </div>
       
-      <h1 className="mb-2" style={{ fontSize: '1.8rem', fontWeight: '700' }}>Geo Tracker</h1>
-      <p className="text-muted mb-8">Inicia sesión para comenzar tu jornada</p>
+      <h1 className="mb-2" style={{ fontSize: '1.8rem', fontWeight: '700' }}>TimeOn Tracker</h1>
+      <p className="text-muted mb-8">Inicia sesión para comenzar </p>
 
       <form onSubmit={handleSubmit}>
         <div className="mb-6" style={{ position: 'relative' }}>
